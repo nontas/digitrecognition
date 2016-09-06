@@ -18,5 +18,7 @@ flags.DEFINE_float('decay_rate', 0.9, 'Learning rate decay rate.')
 flags.DEFINE_float('momentum', 0.9, 'Optimizer .')
 flags.DEFINE_string('optimization', 'adam',
                     "The optimization method to use. Either 'rms' or 'adam'.")
+flags.DEFINE_string('architecture', 'ultimate', 
+                    'The network architecture to use: baseline, ultimate, ultimate_v2.')
 flags.DEFINE_string('eval_set', 'validation', 'The dataset to eval on')
 flags.DEFINE_bool('verbose', True, 'Print log in terminal.')

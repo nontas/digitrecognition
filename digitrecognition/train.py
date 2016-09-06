@@ -49,6 +49,19 @@ def ultimate(images):
     return net
 
 
+def ultimate_v2(images):
+    with slim.arg_scope([slim.layers.conv2d], normalizer_fn=slim.batch_norm):
+        net = slim.layers.conv2d(images, 32, 5, scope='conv1')
+        net = slim.layers.max_pool2d(net, 2, scope='pool1')
+        net = slim.layers.conv2d(net, 32, 5, scope='conv2')
+        net = slim.layers.max_pool2d(net, 2, scope='pool2')
+        net = slim.layers.flatten(net, scope='flatten3')
+        net = slim.layers.dropout(net, scope='dropout4')
+        net = slim.layers.fully_connected(net, 512, scope='fc5')
+    net = slim.layers.fully_connected(net, 10, activation_fn=None, scope='fc6')
+    return net
+
+
 def read_and_decode(filename_queue):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
@@ -185,7 +198,18 @@ def inputs(set_name, batch_size, num_epochs=None, one_hot_labels=False):
     return images, sparse_labels
 
 
-def train(batch_size, num_batches, initial_learning_rate, decay_steps,
+def get_network(architecture):
+    if architecture == 'baseline':
+        return baseline
+    elif architecture == 'ultimate':
+        return ultimate
+    elif architecture == 'ultimate_v2':
+        return ultimate_v2
+    else:
+        raise ValueError('Wrong architecture provided.')
+
+
+def train(architecture, batch_size, num_batches, initial_learning_rate, decay_steps,
           decay_rate, optimization, momentum, log_dir, verbose=False):
     # Reset graph nodes
     tf.reset_default_graph()
@@ -200,7 +224,8 @@ def train(batch_size, num_batches, initial_learning_rate, decay_steps,
 
     with slim.arg_scope([slim.layers.dropout, slim.batch_norm], is_training=True):
 #        with tf.device('/gpu:0'):
-        predictions = ultimate(images)
+        net_fun = get_network(architecture)
+        predictions = net_fun(images)
 
     # Display images to tensorboard
     tf.image_summary('images', images, max_images=5)
@@ -241,7 +266,8 @@ def train(batch_size, num_batches, initial_learning_rate, decay_steps,
 
 
 def main(argv):
-    train(FLAGS.batch_size,
+    train(FLAGS.architecture,
+          FLAGS.batch_size,
           FLAGS.num_train_batches,
           FLAGS.initial_learning_rate,
           FLAGS.decay_steps,
