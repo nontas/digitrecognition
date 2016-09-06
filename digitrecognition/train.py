@@ -1,29 +1,51 @@
 import os
 import shutil
+import numpy as np
 
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from tensorflow.examples.tutorials.mnist import mnist
 from tensorflow.python.platform import tf_logging as logging
 
+from menpo.image import Image
+from menpo.image import Image, BooleanImage
+from menpo.feature import gaussian_filter
+from menpo.shape import bounding_box
+from menpo.transform import ThinPlateSplines
+from menpo.transform import Similarity, Rotation, Translation, Affine
+
 from digitrecognition.base import src_dir_path
 import digitrecognition.params
 
 TRAIN_FILE = 'train.tfrecords'
 VALIDATION_FILE = 'validation.tfrecords'
+TEST_FILE = 'test.tfrecords'
 
 FLAGS = tf.app.flags.FLAGS
 
 
-def lenet(images):
+def baseline(images):
     net = slim.layers.conv2d(images, 32, 5, scope='conv1')
     net = slim.layers.max_pool2d(net, 2, scope='pool1')
     net = slim.layers.conv2d(net, 64, 5, scope='conv2')
     net = slim.layers.max_pool2d(net, 2, scope='pool2')
     net = slim.layers.flatten(net, scope='flatten3')
-    net = slim.layers.fully_connected(net, 500, scope='fully_connected4')
+    net = slim.layers.fully_connected(net, 500, scope='fc4')
     net = slim.layers.fully_connected(net, 10, activation_fn=None,
-                                      scope='fully_connected5')
+                                      scope='fc5')
+    return net
+
+
+def ultimate(images):
+    with slim.arg_scope([slim.layers.conv2d, slim.layers.fully_connected], normalizer_fn=slim.batch_norm):
+        net = slim.layers.conv2d(images, 64, 5, scope='conv1')
+        net = slim.layers.max_pool2d(net, 2, scope='pool1')
+        net = slim.layers.conv2d(net, 32, 5, scope='conv2')
+        net = slim.layers.max_pool2d(net, 2, scope='pool2')
+        net = slim.layers.flatten(net, scope='flatten3')
+        net = slim.layers.dropout(net, scope='dropout4')
+        net = slim.layers.fully_connected(net, 1024, scope='fc5')
+    net = slim.layers.fully_connected(net, 10, activation_fn=None, scope='fc6')
     return net
 
 
@@ -57,7 +79,43 @@ def read_and_decode(filename_queue):
     return image, label
 
 
-def inputs(train, batch_size, num_epochs=None, one_hot_labels=False):
+def skew(shape, theta, phi):
+    rotate_ccw = Similarity.init_identity(shape.n_dims)
+    h_matrix = np.ones((3, 3))
+    h_matrix[0, 1] = np.tan(theta * np.pi / 180.)
+    h_matrix[1, 0] = np.tan(phi * np.pi / 180.)
+    h_matrix[:2, 2] = 0.
+    h_matrix[2, :2] = 0.
+    r = Affine(h_matrix)
+    t = Translation(-shape.centre(), skip_checks=True)
+    # Translate to origin, rotate counter-clockwise, then translate back
+    rotate_ccw.compose_before_inplace(t)
+    rotate_ccw.compose_before_inplace(r)
+    rotate_ccw.compose_before_inplace(t.pseudoinverse())
+
+    return rotate_ccw.apply(shape)
+
+
+def preprocess(pixels, low=-30, high=30):
+    # Create menpo image
+    image = Image.init_from_channels_at_back(pixels)
+
+    # Rotation
+    theta = np.random.uniform(low=low, high=high)
+    image = image.rotate_ccw_about_centre(theta, retain_shape=True)
+
+    # Skew
+    mask = BooleanImage(image.pixels[0])
+    bbox = bounding_box(*mask.bounds_true())
+    angles = np.random.uniform(low=low, high=high, size=2)
+    new_bb = skew(bbox, angles[0], angles[1])
+    pwa = ThinPlateSplines(new_bb, bbox)
+    image = image.warp_to_shape(image.shape, pwa)
+    
+    return image.pixels_with_channels_at_back()[..., None].astype(np.float32)
+
+
+def inputs(set_name, batch_size, num_epochs=None, one_hot_labels=False):
     r"""
     Reads the input data num_epochs times.
 
@@ -77,30 +135,50 @@ def inputs(train, batch_size, num_epochs=None, one_hot_labels=False):
         must be run using e.g. tf.train.start_queue_runners().
     """
     train_dir = src_dir_path() / 'data'
-    if train:
-        filename = train_dir / TRAIN_FILE
-    else:
-        filename = train_dir / VALIDATION_FILE
+
+    set_names = {
+        'train': TRAIN_FILE,
+        'validation': VALIDATION_FILE,
+        'test': TEST_FILE
+    }
+
+    if set_name not in set_names:
+        raise RuntimeError('{} is not a valid set name'.format(set_name))
+    
+    filename = train_dir / set_names[set_name]
 
     with tf.name_scope('input'):
         filename_queue = tf.train.string_input_producer(
-            [str(filename)], num_epochs=num_epochs)
+            [str(filename)], num_epochs=num_epochs, shuffle=False)
 
         # Even when reading in multiple threads, share the filename
         # queue.
         image, label = read_and_decode(filename_queue)
+        
+        # Augment
+        shape = image.get_shape()
+        image, = tf.py_func(preprocess, [image], [tf.float32])
+        image.set_shape(shape)
 
         if one_hot_labels:
             label = tf.one_hot(label, mnist.NUM_CLASSES, dtype=tf.int32)
 
+        num_threads = 1 if set_name == 'train' else 2
+
         # Shuffle the examples and collect them into batch_size batches.
         # (Internally uses a RandomShuffleQueue.)
         # We run this in two threads to avoid being a bottleneck.
-        images, sparse_labels = tf.train.shuffle_batch(
-            [image, label], batch_size=batch_size, num_threads=2,
-            capacity=1000 + 3 * batch_size,
-            # Ensures a minimum amount of shuffling of examples.
-            min_after_dequeue=1000)
+
+        if set_name == 'train':
+            images, sparse_labels = tf.train.shuffle_batch(
+                    [image, label],
+                    batch_size=batch_size,
+                    num_threads=num_threads,
+                    capacity=10000,
+                    min_after_dequeue=1000
+            )
+        else:
+            images, sparse_labels = tf.train.batch([image, label], batch_size=batch_size)
 
     return images, sparse_labels
 
@@ -115,9 +193,10 @@ def train(batch_size, num_batches, initial_learning_rate, decay_steps,
         shutil.rmtree(log_dir)
 
     # Define network
-    images, labels = inputs(train=True, batch_size=batch_size,
+    images, labels = inputs(set_name='train', batch_size=batch_size,
                             num_epochs=num_batches, one_hot_labels=True)
-    predictions = lenet(images)
+    with slim.arg_scope([slim.layers.dropout, slim.batch_norm], is_training=True):
+        predictions = ultimate(images)
 
     # Display images to tensorboard
     tf.image_summary('images', images, max_images=5)
@@ -153,7 +232,8 @@ def train(batch_size, num_batches, initial_learning_rate, decay_steps,
         logging.set_verbosity(1)
 
     # Start training
-    slim.learning.train(train_op, log_dir, save_summaries_secs=20)
+    slim.learning.train(train_op, log_dir, save_summaries_secs=20, save_interval_secs=60, 
+                        log_every_n_steps=100)
 
 
 def main(_):
