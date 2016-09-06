@@ -1,5 +1,6 @@
-# Ignore data folder
+# Ignore data and log folders
 data/*.gz
+log/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

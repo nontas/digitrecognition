@@ -1,12 +1,13 @@
 import os
-from urllib.request import urlretrieve
+import urllib
 import gzip
 import numpy as np
+import tensorflow as tf
 
 from menpo.image import Image
 from menpo.visualize import print_dynamic
 
-from .base import src_dir_path
+from digitrecognition.base import src_dir_path
 
 
 # MNIST url
@@ -47,7 +48,7 @@ def download(filename, verbose=False):
     file_path = data_path / filename
     if not os.path.isfile(str(file_path)):
         # It doesn't exist, so download it
-        urlretrieve(SOURCE_URL + filename, filename=str(file_path))
+        urllib.request.urlretrieve(SOURCE_URL + filename, filename=str(file_path))
     # Return
     return file_path
 
@@ -287,3 +288,84 @@ def import_mnist_data(n_validation_images=5000, as_one_hot=False, verbose=False)
 
     return (train_images, train_labels, validation_images, validation_labels,
             test_images, test_labels)
+
+
+def _int64_feature(value):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+
+def _bytes_feature(value):
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+
+def serialize_data(images, labels, filename, verbose=False):
+    r"""
+    Method that saves the provided images and labels to file using the tensorflow
+    record writer.
+
+    Parameters
+    ----------
+    images : `list` or `array`
+        The images to serialize.
+    labels : `array`
+        The corresponding labels.
+    filename : `str`
+        The filename to use. The data will be saved in the 'data' folder.
+    verbose : `bool`, optional
+        If `True`, then the progress will be printed.
+
+    Returns
+    -------
+    train_images : `list` of `menpo.image.Image`
+        The list of train images.
+    train_labels : `array`
+        The array of labels of the train images.
+    validation_images : `list` of `menpo.image.Image`
+        The list of validation images.
+    validation_labels : `array`
+        The array of labels of the validation images.
+    test_images : `list` of `menpo.image.Image`
+        The list of test images.
+    test_labels : `array`
+        The array of labels of the test images.
+    """
+    # If images is list, convert it to numpy array
+    images = convert_images_to_array(images)
+
+    # Get number of images, height, width and number of channels
+    num_examples = labels.shape[0]
+    if images.shape[0] != num_examples:
+        raise ValueError("Images size %d does not match labels size %d.".format(images.shape[0], num_examples))
+    height = images.shape[1]
+    width = images.shape[2]
+    n_channels = images.shape[3]
+
+    # Save data
+    filename = str(src_dir_path() / 'data' / (filename + '.tfrecords'))
+    if verbose:
+        print_dynamic('Writing {}'.format(filename))
+    writer = tf.python_io.TFRecordWriter(filename)
+    for index in range(num_examples):
+        image_raw = images[index].tostring()
+        example = tf.train.Example(features=tf.train.Features(feature={
+            'height': _int64_feature(height),
+            'width': _int64_feature(width),
+            'depth': _int64_feature(n_channels),
+            'label': _int64_feature(int(labels[index])),
+            'image_raw': _bytes_feature(image_raw)}))
+        writer.write(example.SerializeToString())
+    writer.close()
+    if verbose:
+        print_dynamic('Completed successfully!')
+
+
+if __name__ == '__main__':
+    # Import MNIST data
+    (train_images, train_labels, validation_images, validation_labels,
+     test_images, test_labels) = import_mnist_data(verbose=True)
+
+    # Serialize MNIST data
+    serialize_data(train_images, train_labels, 'train', verbose=True)
+    serialize_data(validation_images, validation_labels, 'validation',
+                   verbose=True)
+    serialize_data(test_images, test_labels, 'test', verbose=True)
