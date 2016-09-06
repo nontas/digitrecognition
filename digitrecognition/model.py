@@ -100,3 +100,27 @@ def ultimate_v2(images):
     net = slim.layers.fully_connected(net, 10, activation_fn=None, scope='fc6')
 
     return net
+
+
+def get_network(architecture):
+    r"""
+    Get network architecture callable.
+
+    Parameters
+    ----------
+    architecture : ``{'baseline', 'ultimate', 'ultimate_v2'}``
+        The network architecture to return.
+
+    Returns
+    -------
+    network : `callable`
+        The callable that creates the network.
+    """
+    if architecture == 'baseline':
+        return baseline
+    elif architecture == 'ultimate':
+        return ultimate
+    elif architecture == 'ultimate_v2':
+        return ultimate_v2
+    else:
+        raise ValueError('{} architecture does not exist.'.format(architecture))
