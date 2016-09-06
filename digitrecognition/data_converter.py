@@ -48,8 +48,9 @@ def download(filename, verbose=False):
     file_path = data_path / filename
     if not os.path.isfile(str(file_path)):
         # It doesn't exist, so download it
-        urllib.request.urlretrieve(SOURCE_URL + filename, filename=str(file_path))
-    # Return
+        urllib.request.urlretrieve(SOURCE_URL + filename,
+                                   filename=str(file_path))
+    # Return the path where the file is stored
     return file_path
 
 
@@ -73,15 +74,15 @@ def _read32(bytestream):
 
 def extract_images(filename, as_images=False, verbose=False):
     r"""
-    Extract images from gz file.
+    Extract images from gzip file.
 
     Parameters
     ----------
     filename : `pathlib.PosixPath`
-        The gz file path.
+        The gzip file path.
     as_images : `bool`, optional
         If `True`, then the method returns a list containing a
-        `menpo.image.Image` per image. If `False`, then it
+        `menpo.image.Image` object per image. If `False`, then it
         returns a numpy array of shape `(n_images, height, width, n_channels)`.
     verbose : `bool`, optional
         If `True`, then the progress will be printed.
@@ -104,12 +105,13 @@ def extract_images(filename, as_images=False, verbose=False):
         buf = bytestream.read(rows * cols * num_images)
         data = np.frombuffer(buf, dtype=np.uint8)
         data = data.reshape(num_images, rows, cols, 1)
+        # Convert data array to list of menpo.image.Image, if required
         if as_images:
             return [Image(data[i, :, :, 0]) for i in range(data.shape[0])]
         return data
 
 
-def dense_to_one_hot(labels_dense):
+def _convert_dense_to_one_hot(labels_dense):
     r"""
     Method that converts an array of labels to one-hot labels.
 
@@ -135,12 +137,12 @@ def dense_to_one_hot(labels_dense):
 
 def extract_labels(filename, as_one_hot=False, verbose=False):
     r"""
-    Extract labels from gz file.
+    Extract labels from gzip file.
 
     Parameters
     ----------
     filename : `pathlib.PosixPath`
-        The gz file path.
+        The gzip file path.
     as_one_hot : `bool`, optional
         If `False`, then the labels are returned as integers within
         a `(n_images,)` numpy array. If `True`, then the labels are
@@ -152,7 +154,7 @@ def extract_labels(filename, as_one_hot=False, verbose=False):
     Returns
     -------
     labels : `array`
-        The labels.
+        The extracted labels.
     """
     if verbose:
         print_dynamic('Extracting {}'.format(filename))
@@ -164,15 +166,16 @@ def extract_labels(filename, as_one_hot=False, verbose=False):
         num_items = _read32(bytestream)
         buf = bytestream.read(num_items)
         labels = np.frombuffer(buf, dtype=np.uint8)
+        # Convert labels array to one-hot labels, if required
         if as_one_hot:
-            return dense_to_one_hot(labels)
+            return _convert_dense_to_one_hot(labels)
         return labels
 
 
 def split_data(images, labels, n_images):
     r"""
-    Method that splits a set of images and corresponding
-    labels in two disjoint sets.
+    Method that splits a set of images and corresponding labels in two disjoint
+    sets. This is useful for creating a training and validation set.
 
     Parameters
     ----------
@@ -203,12 +206,12 @@ def split_data(images, labels, n_images):
 
 def convert_images_to_array(images):
     r"""
-    Method that converts a list of image objects to numpy array
+    Method that converts a list of `menpo.image.Image` objects to numpy array
     of shape `(n_images, height, width, n_channels)`.
 
     Parameters
     ----------
-    images : `list`
+    images : `list` of `menpo.image.Image`
         The list of images.
 
     Returns
@@ -217,15 +220,19 @@ def convert_images_to_array(images):
         The `(n_images, height, width, n_channels)` array of images.
     """
     if isinstance(images, list):
+        # Get dimensions
         n_images = len(images)
         height, width = images[0].shape
         n_channels = images[0].n_channels
+        # Initialize array with zeros
         arr = np.zeros((n_images, height, width, n_channels),
                        dtype=images[0].pixels.dtype)
+        # Extract pixels from each image
         for i, im in enumerate(images):
             arr[i] = im.pixels_with_channels_at_back()[..., None]
         return arr
-    return images
+    else:
+        return images
 
 
 def import_mnist_data(n_validation_images=5000, as_one_hot=False, verbose=False):
@@ -237,12 +244,12 @@ def import_mnist_data(n_validation_images=5000, as_one_hot=False, verbose=False)
     Parameters
     ----------
     n_validation_images : `int`, optional
-        The number of validation images.
+        The number of images from the training set that will be used as
+        validation set.
     as_one_hot : `bool`, optional
         If `False`, then the labels are returned as integers within
         a `(n_images,)` numpy array. If `True`, then the labels are
-        returned as one-hot vetors in an `(n_images, n_labels)` numpy
-        array.
+        returned as one-hot vectors in an `(n_images, n_labels)` numpy array.
     verbose : `bool`, optional
         If `True`, then the progress will be printed.
 
@@ -281,27 +288,52 @@ def import_mnist_data(n_validation_images=5000, as_one_hot=False, verbose=False)
     validation_images, validation_labels, train_images, train_labels = \
         split_data(train_images, train_labels, n_validation_images)
 
-    # Augment training data
-
     if verbose:
         print_dynamic('Successfully imported MNIST')
 
+    # Return images and labels
     return (train_images, train_labels, validation_images, validation_labels,
             test_images, test_labels)
 
 
 def _int64_feature(value):
+    r"""
+    Convenience method for defining a 64-bit integer within tensorflow.
+
+    Parameters
+    ----------
+    value : `int`
+        The input value.
+
+    Returns
+    -------
+    tf_int64 : `tf.train.Feature`
+        The converted value.
+    """
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
 def _bytes_feature(value):
+    r"""
+    Convenience method for defining a bytes list within tensorflow.
+
+    Parameters
+    ----------
+    value : `bytes`
+        The input bytes list.
+
+    Returns
+    -------
+    tf_bytes : `tf.train.Feature`
+        The converted value.
+    """
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
 def serialize_data(images, labels, filename, verbose=False):
     r"""
-    Method that saves the provided images and labels to file using the tensorflow
-    record writer.
+    Method that saves the provided images and labels to tfrecords file using the
+    tensorflow record writer.
 
     Parameters
     ----------
@@ -310,24 +342,10 @@ def serialize_data(images, labels, filename, verbose=False):
     labels : `array`
         The corresponding labels.
     filename : `str`
-        The filename to use. The data will be saved in the 'data' folder.
+        The filename to use. Note that the data will be saved in the 'data'
+        folder.
     verbose : `bool`, optional
         If `True`, then the progress will be printed.
-
-    Returns
-    -------
-    train_images : `list` of `menpo.image.Image`
-        The list of train images.
-    train_labels : `array`
-        The array of labels of the train images.
-    validation_images : `list` of `menpo.image.Image`
-        The list of validation images.
-    validation_labels : `array`
-        The array of labels of the validation images.
-    test_images : `list` of `menpo.image.Image`
-        The list of test images.
-    test_labels : `array`
-        The array of labels of the test images.
     """
     # If images is list, convert it to numpy array
     images = convert_images_to_array(images)
