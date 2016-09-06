@@ -1,5 +1,5 @@
 # Ignore data and log folders
-data/*.gz
+data/*
 log/*
 
 # Byte-compiled / optimized / DLL files
