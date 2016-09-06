@@ -25,7 +25,7 @@ def train(architecture, batch_size, num_batches, initial_learning_rate,
         The network architecture to use.
     batch_size : `int`
         The number of images per batch.
-    num_batches : `int` or ``None``, optional
+    num_batches : `int` or ``None``
         The number of batches.
     initial_learning_rate : `float`
         The initial value of the learning rate decay.
