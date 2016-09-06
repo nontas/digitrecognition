@@ -16,7 +16,7 @@ flags.DEFINE_float('initial_learning_rate', 0.001,
 flags.DEFINE_float('decay_steps', 10000, 'Learning rate decay steps.')
 flags.DEFINE_float('decay_rate', 0.9, 'Learning rate decay rate.')
 flags.DEFINE_float('momentum', 0.9, 'Optimizer .')
-flags.DEFINE_string('optimization', 'rms',
+flags.DEFINE_string('optimization', 'adam',
                     "The optimization method to use. Either 'rms' or 'adam'.")
 flags.DEFINE_string('eval_set', 'validation', 'The dataset to eval on')
 flags.DEFINE_bool('verbose', True, 'Print log in terminal.')

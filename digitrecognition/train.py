@@ -65,7 +65,6 @@ def read_and_decode(filename_queue):
     # [mnist.IMAGE_PIXELS].
     image = tf.decode_raw(features['image_raw'], tf.uint8)
     image.set_shape([mnist.IMAGE_PIXELS])
-    image = tf.cast(image, tf.float32) * (1. / 255) - 0.5
     image = tf.reshape(image, [mnist.IMAGE_SIZE, mnist.IMAGE_SIZE, 1])
 
     # OPTIONAL: Could reshape into a 28x28 image and apply distortions
@@ -156,14 +155,17 @@ def inputs(set_name, batch_size, num_epochs=None, one_hot_labels=False):
         image, label = read_and_decode(filename_queue)
         
         # Augment
-        shape = image.get_shape()
-        image, = tf.py_func(preprocess, [image], [tf.float32])
-        image.set_shape(shape)
+        if set_name == 'train':
+            shape = image.get_shape()
+            image, = tf.py_func(preprocess, [image], [tf.float32])
+            image.set_shape(shape)
+        
+        image = image / 255.0 - 0.5
 
         if one_hot_labels:
             label = tf.one_hot(label, mnist.NUM_CLASSES, dtype=tf.int32)
 
-        num_threads = 1 if set_name == 'train' else 2
+        num_threads = 4 if set_name == 'train' else 1
 
         # Shuffle the examples and collect them into batch_size batches.
         # (Internally uses a RandomShuffleQueue.)
@@ -175,7 +177,7 @@ def inputs(set_name, batch_size, num_epochs=None, one_hot_labels=False):
                     batch_size=batch_size,
                     num_threads=num_threads,
                     capacity=10000,
-                    min_after_dequeue=1000
+                    min_after_dequeue=batch_size*4
             )
         else:
             images, sparse_labels = tf.train.batch([image, label], batch_size=batch_size)
@@ -195,7 +197,9 @@ def train(batch_size, num_batches, initial_learning_rate, decay_steps,
     # Define network
     images, labels = inputs(set_name='train', batch_size=batch_size,
                             num_epochs=num_batches, one_hot_labels=True)
+
     with slim.arg_scope([slim.layers.dropout, slim.batch_norm], is_training=True):
+#        with tf.device('/gpu:0'):
         predictions = ultimate(images)
 
     # Display images to tensorboard
@@ -236,7 +240,7 @@ def train(batch_size, num_batches, initial_learning_rate, decay_steps,
                         log_every_n_steps=100)
 
 
-def main(_):
+def main(argv):
     train(FLAGS.batch_size,
           FLAGS.num_train_batches,
           FLAGS.initial_learning_rate,
@@ -249,4 +253,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    tf.app.run(main)

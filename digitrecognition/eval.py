@@ -3,6 +3,7 @@ import shutil
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from tensorflow.examples.tutorials.mnist import mnist
+from tensorflow.python.platform import tf_logging as logging
 
 from digitrecognition.train import inputs, ultimate
 import digitrecognition.params
@@ -34,13 +35,14 @@ def evaluate(batch_size, num_samples, log_dir, checkpoint_dir, set_name):
     for metric_name, metric_value in metrics_to_values.items():
         tf.scalar_summary(metric_name, metric_value)
 
+    logging.set_verbosity(1)
     num_batches = math.ceil(num_samples / float(batch_size))
     # Evaluate every 30 seconds
     slim.evaluation.evaluation_loop(
         '', checkpoint_dir, log_dir, num_evals=num_batches,
         eval_op=list(metrics_to_updates.values()),
         summary_op=tf.merge_all_summaries(),
-        eval_interval_secs=60)
+        eval_interval_secs=300)
 
 
 def main(_):
