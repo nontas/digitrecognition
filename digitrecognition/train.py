@@ -12,27 +12,13 @@ import digitrecognition.params
 TRAIN_FILE = 'train.tfrecords'
 VALIDATION_FILE = 'validation.tfrecords'
 
-
-flags = tf.app.flags
-# flags.DEFINE_integer('batch_size', 64, 'Batch size.')
-# flags.DEFINE_integer('num_batches', None, 'Num of batches to train (epochs).')
-# flags.DEFINE_string('log_dir', str(src_dir_path() / 'log' / 'train'),
-#                     'Directory with the training log data.')
-# flags.DEFINE_float('initial_learning_rate', 0.001,
-#                    'Initial value of learning rate decay.')
-# flags.DEFINE_float('decay_steps', 10000, 'Learning rate decay steps.')
-# flags.DEFINE_float('decay_rate', 0.9, 'Learning rate decay rate.')
-# flags.DEFINE_float('momentum', 0.9, 'Optimizer .')
-# flags.DEFINE_string('optimization', 'rms',
-#                     "The optimization method to use. Either 'rms' or 'adam'.")
-# flags.DEFINE_bool('verbose', True, 'Print log in terminal.')
-FLAGS = flags.FLAGS
+FLAGS = tf.app.flags.FLAGS
 
 
 def lenet(images):
-    net = slim.layers.conv2d(images, 20, 5, scope='conv1')
+    net = slim.layers.conv2d(images, 32, 5, scope='conv1')
     net = slim.layers.max_pool2d(net, 2, scope='pool1')
-    net = slim.layers.conv2d(net, 50, 5, scope='conv2')
+    net = slim.layers.conv2d(net, 64, 5, scope='conv2')
     net = slim.layers.max_pool2d(net, 2, scope='pool2')
     net = slim.layers.flatten(net, scope='flatten3')
     net = slim.layers.fully_connected(net, 500, scope='fully_connected4')
@@ -119,8 +105,8 @@ def inputs(train, batch_size, num_epochs=None, one_hot_labels=False):
     return images, sparse_labels
 
 
-def main(batch_size, num_batches, initial_learning_rate, decay_steps,
-         decay_rate, optimization, momentum, log_dir, verbose=False):
+def train(batch_size, num_batches, initial_learning_rate, decay_steps,
+          decay_rate, optimization, momentum, log_dir, verbose=False):
     # Reset graph nodes
     tf.reset_default_graph()
 
@@ -133,9 +119,14 @@ def main(batch_size, num_batches, initial_learning_rate, decay_steps,
                             num_epochs=num_batches, one_hot_labels=True)
     predictions = lenet(images)
 
+    # Display images to tensorboard
+    tf.image_summary('images', images, max_images=5)
+
     # Define loss function
     slim.losses.softmax_cross_entropy(predictions, labels)
     total_loss = slim.losses.get_total_loss()
+
+    # Add loss summary to tensorboard
     tf.scalar_summary('loss', total_loss)
 
     # Create learning rate decay
@@ -165,13 +156,17 @@ def main(batch_size, num_batches, initial_learning_rate, decay_steps,
     slim.learning.train(train_op, log_dir, save_summaries_secs=20)
 
 
+def main(_):
+    train(FLAGS.batch_size,
+          FLAGS.num_train_batches,
+          FLAGS.initial_learning_rate,
+          FLAGS.decay_steps,
+          FLAGS.decay_rate,
+          FLAGS.optimization,
+          FLAGS.momentum,
+          FLAGS.log_train_dir,
+          FLAGS.verbose)
+
+
 if __name__ == '__main__':
-    main(FLAGS.batch_size,
-         FLAGS.num_train_batches,
-         FLAGS.initial_learning_rate,
-         FLAGS.decay_steps,
-         FLAGS.decay_rate,
-         FLAGS.optimization,
-         FLAGS.momentum,
-         FLAGS.log_train_dir,
-         FLAGS.verbose)
+    tf.app.run()

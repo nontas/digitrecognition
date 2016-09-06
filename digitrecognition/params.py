@@ -19,4 +19,3 @@ flags.DEFINE_float('momentum', 0.9, 'Optimizer .')
 flags.DEFINE_string('optimization', 'rms',
                     "The optimization method to use. Either 'rms' or 'adam'.")
 flags.DEFINE_bool('verbose', True, 'Print log in terminal.')
-FLAGS = flags.FLAGS
