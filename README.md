@@ -6,6 +6,9 @@ with Convolutional Neural Network on the
 1. [Installation](#installation)
 2. [Methodology](#methodology)
 3. [Running](#running)
+4. [Results](#results)
+
+-------------------------------
 
 ## 1. Installation
 The package depends on:
@@ -45,15 +48,21 @@ For example, for 64-bit Linux, the installation of GPU enabled, Python 3.5 Tenso
 (mnist)$ pip install -e digitrecognition/
 ```
 
+-------------------------------
 
 ## 2. Methodology
 The solution implemented in this package is the following:
 
 * _Data pre-processing_  
-  During training, the images are pre-processed in the following way:
+  During training, each image is pre-processed in the following way:
   * The image is rotated around its centre with a random angle.
   * The image is skewed (distorted) with random angles.
+  
+  The pre-proceessing is happenning on the fly, i.e. every time a new example is 
+  loaded the pre-processing is applied. Given that we also do not limit the number of batches, 
+  the system will keep training with an infinite number of randomly perturbed examples.
   This pre-processing is implemented using [Menpo](https://github.com/menpo/menpo). 
+  You can find the implementation in [data_provider.py](https://github.com/nontas/digitrecognition/blob/master/digitrecognition/data_provider.py).
   To get an idea of the results of the employed pre-processing, you 
   can run the following code in a [Jupyter notebook](https://github.com/jupyter/notebook):
   ```python
@@ -91,10 +100,14 @@ The solution implemented in this package is the following:
   5. Fully Connected layer (1024 outputs, batch normalization)
   6. Fully Connected layer (10 outputs)
   
+  The definitions of the various architectures can be found in
+  [model.py](https://github.com/nontas/digitrecognition/blob/master/digitrecognition/model.py).
+  
 * _Learning rate decay:_  
   The experiments showed that to decay the learning rate can help a lot. The initial 
   value of the learning rate is `0.001` and then it decreases with a rate of `0.9` 
-  every `10000` steps.
+  every `10000` steps. Refer to [train.py](https://github.com/nontas/digitrecognition/blob/master/digitrecognition/train.py) for more
+  details on how this is implemented.
   
 * _Optimizer:_  
   The employed optimizer is `tf.train.AdamOptimizer` which proved better than 
