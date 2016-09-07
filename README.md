@@ -35,7 +35,7 @@ For example, for 64-bit Linux, the installation of GPU enabled, Python 3.5 Tenso
 
 **Step 3:** Install [menpo](https://github.com/menpo/menpo) from the _menpo_ channel as:
 ```console
-(mnist)$ conda install -c menpo menpo menpowidgets
+(mnist)$ conda install -c menpo menpo
 ```
 
 **Step 4:** Clone and install the `digitrecognition` project as:
@@ -47,7 +47,58 @@ For example, for 64-bit Linux, the installation of GPU enabled, Python 3.5 Tenso
 
 
 ## 2. Methodology
-The package employs the following solution:
+The solution implemented in this package is the following:
+
+* _Data pre-processing_  
+  During training, the images are pre-processed in the following way:
+  * The image is rotated around its centre with a random angle.
+  * The image is skewed (distorted) with random angles.
+  This pre-processing is implemented using [Menpo](https://github.com/menpo/menpo). 
+  To get an idea of the results of the employed pre-processing, you 
+  can run the following code in a [Jupyter notebook](https://github.com/jupyter/notebook):
+  ```python
+  %matplotlib inline
+  from numpy.random import randint
+  import matplotlib.pyplot as plt
+  from menpo.image import Image
+  
+  from digitrecognition import import_mnist_data
+  from digitrecognition.data_provider import preprocess
+  
+  # Load train images
+  train_images, _, _, _, _, _ = import_mnist_data(verbose=True)
+  
+  # Generate random image index
+  i = randint(0, len(train_images))
+  
+  # Pre-process image
+  im = train_images[i].pixels_with_channels_at_back()[..., None]
+  im = preprocess(im)
+  
+  # Plot before and after
+  plt.subplot(121)
+  train_images[i].view()
+  plt.subplot(122)
+  Image.init_from_channels_at_back(im).view()
+  ```
+  
+* _Network architecture:_  
+  After trying a few network architectures, the best performing one is:
+  1. Convolutional layer (64 filters, 5x5 kernel, batch normalization)
+  2. Max-Pooling layer (2x2 kernel)
+  3. Convolutional layer (32 filters, 5x5 kernel, batch normalization)
+  4. Max-Pooling layer (2x2 kernel)
+  5. Fully Connected layer (1024 outputs, batch normalization)
+  6. Fully Connected layer (10 outputs)
+  
+* _Learning rate decay:_  
+  The experiments showed that to decay the learning rate can help a lot. The initial 
+  value of the learning rate is `0.001` and then it decreases with a rate of `0.9` 
+  every `10000` steps.
+  
+* _Optimizer:_  
+  The employed optimizer is `tf.train.AdamOptimizer` which proved better than 
+  `tf.train.RMSPropOptimizer`.
 
 
 ## 3. Running
@@ -109,13 +160,14 @@ Note that by default, the validation log files are stored in `./log/eval/`.
 (mnist)$ python digitrecognition/eval.py --eval_set=test --log_eval_dir=./log/eval_test
 ```
 
-**TensorBoard:** You can simultaneously run the training and validation. The results can
- be observed through [TensorBoard](https://www.tensorflow.org/versions/r0.10/how_tos/summaries_and_tensorboard/index.html). 
- Simply run:
- ```console
- (mnist)$ tensorboard --logdir=log
- ```
- This makes it easy to explore the graph, data, loss evolution and accuracy on the validation set. 
+**TensorBoard:** You can simultaneously run the training and validation. The results can 
+be observed through [TensorBoard](https://www.tensorflow.org/versions/r0.10/how_tos/summaries_and_tensorboard/index.html). 
+Simply run:
+```console
+(mnist)$ tensorboard --logdir=log
+```
+This makes it easy to explore the graph, data, loss evolution and accuracy on the validation set. 
  
  
- ## 4. Results
+## 4. Results
+The results of the above model are:
