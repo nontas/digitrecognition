@@ -1,7 +1,7 @@
 # MNIST Digit Recognition
 This package provides training and evaluation code to perform Digit Recognition 
 with Convolutional Neural Network on the 
-[MNIST dataset](http://yann.lecun.com/exdb/mnist/).
+[MNIST dataset](http://yann.lecun.com/exdb/mnist/). The accuracy on the test set is **99.47%**.
 
 1. [Installation](#installation)
 2. [Methodology](#methodology)
@@ -185,4 +185,10 @@ This makes it easy to explore the graph, data, loss evolution and accuracy on th
 -------------------------------
  
 ## 4. Results
-The results of the above model are:
+The `ultimate` architecture achieves the best accuracy on the test set, followed by `ultimate_v2` and `baseline`. Specifically, the accuracy on the _test_ set is:
+
+| Architecture  | Accuracy   |
+| ------------- |:----------:|
+| `ultimate`    | **99.47%** |
+| `ultimate_v2` | 99.37%     |
+
