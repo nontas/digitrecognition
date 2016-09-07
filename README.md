@@ -193,14 +193,23 @@ followed by `ultimate_v2` and `baseline`. Specifically, the accuracy on the _tes
 | `ultimate`    | **99.47%** | ~210k |
 | `ultimate_v2` | 99.37%     | ~257k |
 
+-------------------------------
 
-![accuracy][img/accuracy_ultimate.png]
+<p align="center">
+  <img src="img/accuracy_ultimate.png" alt="accuracy" width="100%">
+</p>
 _Figure 1: The streaming accuracy of `ultimate` network. The blue and orange lines report the accuracy on the validation and test set._
 
- 
-![loss][img/loss_ultimate.png]
+-------------------------------
+
+<p align="center">
+  <img src="img/loss_ultimate.png" alt="loss" width="100%">
+</p>
 _Figure 2: The streaming loss of `ultimate` (blue) and `ultimate_v2` (green) networks._
 
+-------------------------------
 
-![rgaph][img/graph_ultimate.png]
+<p align="center">
+  <img src="img/graph_ultimate.png" alt="graph" width="100%">
+</p>
 _Figure 3: The graph of the `ultimate` network._
