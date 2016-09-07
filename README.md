@@ -113,6 +113,7 @@ The solution implemented in this package is the following:
   The employed optimizer is `tf.train.AdamOptimizer` which proved better than 
   `tf.train.RMSPropOptimizer`.
 
+-------------------------------
 
 ## 3. Running
 To run the training and evaluation, do the following:
@@ -181,6 +182,7 @@ Simply run:
 ```
 This makes it easy to explore the graph, data, loss evolution and accuracy on the validation set. 
  
+-------------------------------
  
 ## 4. Results
 The results of the above model are:
