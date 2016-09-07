@@ -3,7 +3,11 @@ This package provides training and evaluation code to perform Digit Recognition
 with Convolutional Neural Network on the 
 [MNIST dataset](http://yann.lecun.com/exdb/mnist/).
 
-## Installation
+1. [Installation](#installation)
+2. [Methodology](#methodology)
+3. [Running](#running)
+
+## 1. Installation
 The package depends on:
  
 1. [**TF-Slim**](https://github.com/tensorflow/models/blob/master/inception/inception/slim/README.md): 
@@ -42,11 +46,11 @@ For example, for 64-bit Linux, the installation of GPU enabled, Python 3.5 Tenso
 ```
 
 
-## Methodology
+## 2. Methodology
 The package employs the following solution:
 
 
-## Running
+## 3. Running
 To run the training and evaluation, do the following:
 
 **Data Collection:** In the terminal, run 
@@ -113,3 +117,5 @@ Note that by default, the validation log files are stored in `./log/eval/`.
  ```
  This makes it easy to explore the graph, data, loss evolution and accuracy on the validation set. 
  
+ 
+ ## 4. Results
