@@ -185,10 +185,22 @@ This makes it easy to explore the graph, data, loss evolution and accuracy on th
 -------------------------------
  
 ## 4. Results
-The `ultimate` architecture achieves the best accuracy on the test set, followed by `ultimate_v2` and `baseline`. Specifically, the accuracy on the _test_ set is:
+The `ultimate` architecture achieves the best accuracy on the test set, 
+followed by `ultimate_v2` and `baseline`. Specifically, the accuracy on the _test_ set is:
 
-| Architecture  | Accuracy   |
-| ------------- |:----------:|
-| `ultimate`    | **99.47%** |
-| `ultimate_v2` | 99.37%     |
+| Architecture  | Accuracy   | Steps |
+| ------------- |:----------:| :---: |
+| `ultimate`    | **99.47%** | ~210k |
+| `ultimate_v2` | 99.37%     | ~257k |
 
+
+![accuracy][img/accuracy_ultimate.png]
+_Figure 1: The streaming accuracy of `ultimate` network. The blue and orange lines report the accuracy on the validation and test set._
+
+ 
+![loss][img/loss_ultimate.png]
+_Figure 2: The streaming loss of `ultimate` (blue) and `ultimate_v2` (green) networks._
+
+
+![rgaph][img/graph_ultimate.png]
+_Figure 3: The graph of the `ultimate` network._
