@@ -213,7 +213,7 @@ def inputs(set_name, batch_size, num_epochs=None, one_hot_labels=False):
             image.set_shape(shape)
 
         # Normalize pixel values to be in range [-0.5, 0.5].
-        image = image / 255.0 - 0.5
+        image = tf.to_float(image) / 255.0 - 0.5
 
         # Convert label to one-hot vector, if required.
         if one_hot_labels:
